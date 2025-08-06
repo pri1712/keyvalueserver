@@ -27,7 +27,6 @@ func oneClient(t *testing.T, me int, ck kvtest.IKVClerk, done chan struct{}) kvt
 			return kvtest.ClntRes{i, 0}
 		default:
 			lk.Acquire()
-
 			// log.Printf("%d: acquired lock", me)
 
 			b := strconv.Itoa(me)
