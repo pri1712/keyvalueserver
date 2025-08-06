@@ -1,11 +1,22 @@
-# Distributed Key-Value Store
+# Distributed Lock with Fault-Tolerant KV Store
 
-This project implements a simple distributed key-value server inspired by MIT 6.824 labs. It provides a reliable RPC-based key-value storage service with versioned `Put` and `Get` operations, supporting both single-client and concurrent access scenarios.
+This project implements a **distributed lock system** using a custom-built key-value store with support for **unreliable network conditions**.
 
 ## Features
 
-- Thread-safe key-value store using mutex locking.
-- Version-controlled `Put` operations to support idempotency and consistency.
-- RPC-based interface using Go’s `net/rpc`.
-- Minimal client retry logic (for reliable network setup).
-- Fully passing correctness and race-condition tests under reliable network assumptions.
+- Distributed mutual exclusion lock (`Lock`, `Unlock`) built on top of KVStore
+- Versioned writes to ensure linearizability (verified using porcupine linearizability checker)
+- Supports:
+    - Reliable networks
+    - Unreliable message delivery (loss, delay, reordering)
+- Client-side retries with idempotency
+- Safe concurrent access via versioning
+- Lock release uses compare-and-swap semantics
+- Extensible to support per-client locks
+
+
+## Unreliable Network Handling
+
+- KVServer simulates an unreliable network using random drops and reordering
+- client implements retry logic for robustness
+- Lock operations tested under:
