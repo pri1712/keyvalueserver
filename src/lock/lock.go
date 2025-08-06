@@ -37,35 +37,66 @@ func (lk *Lock) Acquire() {
 			if putErr == rpc.OK {
 				log.Printf("Lock acquired for key %s", lk.key)
 				return
+			} else {
+				log.Printf("Failed to acquire lock for key %s", lk.key)
+				time.Sleep(1 * time.Second)
+				continue
 			}
+		} else if err != rpc.OK {
+			log.Printf("Get error for key %s", lk.key)
+			time.Sleep(1 * time.Second)
+			continue
 		} else {
-			//log.Printf("Lock acquired for key: %v, value: %v, version: %v", lk.key, value, version)
+			log.Printf("Lock acquired for key: %v, value: %v, version: %v", lk.key, value, version)
 			if value == "unlocked" {
 				putErr := lk.ck.Put(lk.key, lk.clientID, version)
 				if putErr == rpc.OK {
 					log.Printf("Lock acquired for key which was existing %s", lk.key)
 					return
+				} else {
+					log.Printf("Failed to acquire lock for key which was existing %s", lk.key)
+					time.Sleep(1 * time.Second)
+					continue
 				}
+			} else if value == lk.clientID {
+				log.Printf("This is our lock")
+				return
 			} else {
-				log.Printf("First unlock it for key %s", lk.key)
+				log.Printf("lock held by other client...waiting")
 				time.Sleep(1 * time.Second)
+				continue
 			}
 		}
 	}
 }
 
 func (lk *Lock) Release() {
-	value, version, err := lk.ck.Get(lk.key)
-	//log.Printf("error %v", err)
-	//log.Printf("Got lock value: %v, version: %v", value, version)
-	if err != rpc.OK {
-		log.Printf("Got lock error: %v", err)
-	} else if value == lk.clientID {
-		log.Printf("Release lock")
-		lk.ck.Put(lk.key, "unlocked", version)
-	} else {
-		log.Printf("Its not your lock to release it.")
+
+	for {
+		value, version, err := lk.ck.Get(lk.key)
+		if err == rpc.ErrNoKey {
+			log.Printf("This key does not exist")
+			return
+		} else if err != rpc.OK {
+			log.Printf("Got error during release: %v", err)
+			time.Sleep(1 * time.Second)
+			continue
+		} else {
+			if value == lk.clientID {
+				log.Printf("Release lock")
+				putErr := lk.ck.Put(lk.key, "unlocked", version)
+				if putErr == rpc.OK {
+					log.Printf("Lock released for key %s", lk.key)
+				} else {
+					log.Printf("Failed to release lock for key %s", lk.key)
+					time.Sleep(1 * time.Second)
+					continue
+				}
+			} else {
+				log.Printf("Cannot release lock owned by other client")
+				return
+			}
+		}
 	}
-	return
 	//lk.ck.Put(lk.key, "", version)
 }
