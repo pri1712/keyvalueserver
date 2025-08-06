@@ -51,10 +51,15 @@ type GetClientReply struct {
 // arguments. Additionally, reply must be passed as a pointer.
 func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 	// You will have to modify this function.
-	request := &rpc.GetArgs{Key: key}
-	reply := &rpc.GetReply{}
-	ck.clnt.Call(ck.server, "KVServer.Get", request, reply)
-	return reply.Value, reply.Version, reply.Err
+	for {
+		request := &rpc.GetArgs{Key: key}
+		reply := &rpc.GetReply{}
+		ok := ck.clnt.Call(ck.server, "KVServer.Get", request, reply)
+		if ok {
+			return reply.Value, reply.Version, reply.Err
+		}
+	}
+
 }
 
 // Put updates key with value only if the version in the
@@ -76,16 +81,27 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 // arguments. Additionally, reply must be passed as a pointer.
 func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 	// You will have to modify this function.
-	request := &rpc.PutArgs{Key: key, Value: value, Version: version}
-	reply := &rpc.PutReply{}
-	ck.clnt.Call(ck.server, "KVServer.Put", request, reply)
-	switch reply.Err {
-	case rpc.ErrNoKey:
-		return rpc.ErrNoKey
-	case rpc.ErrVersion:
-		return rpc.ErrVersion
-	default:
-		return rpc.OK
+	retriedRequest := false
+	for {
+		request := &rpc.PutArgs{Key: key, Value: value, Version: version}
+		reply := &rpc.PutReply{}
+		ok := ck.clnt.Call(ck.server, "KVServer.Put", request, reply)
+		if ok {
+			switch reply.Err {
+			case rpc.ErrNoKey:
+				return rpc.ErrNoKey
+			case rpc.ErrVersion:
+				if retriedRequest {
+					return rpc.ErrMaybe
+				} else {
+					return rpc.ErrVersion
+				}
+			default:
+				return rpc.OK
+			}
+		} else {
+			retriedRequest = true
+		}
 	}
 
 }
