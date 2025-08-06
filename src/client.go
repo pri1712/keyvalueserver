@@ -6,6 +6,8 @@ import (
 	"kvserver/src/tester1"
 )
 
+var tries int = 2
+
 type Clerk struct {
 	clnt   *tester.Clnt
 	server string
@@ -15,6 +17,26 @@ func MakeClerk(clnt *tester.Clnt, server string) kvtest.IKVClerk {
 	ck := &Clerk{clnt: clnt, server: server}
 	// You may add code here.
 	return ck
+}
+
+type PutClientArgs struct {
+	ClientKey         string
+	ClientDataValue   string
+	ClientDataVersion rpc.Tversion
+}
+
+type PutClientReply struct {
+	ClientRpcError rpc.Err
+}
+
+type GetClientArgs struct {
+	ClientKey string
+}
+
+type GetClientReply struct {
+	ClientKey          string
+	ClientRpcError     rpc.Err
+	ClientValueVersion rpc.Tversion
 }
 
 // Get fetches the current value and version for a key.  It returns
@@ -29,7 +51,10 @@ func MakeClerk(clnt *tester.Clnt, server string) kvtest.IKVClerk {
 // arguments. Additionally, reply must be passed as a pointer.
 func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 	// You will have to modify this function.
-	return "", 0, rpc.ErrNoKey
+	request := &rpc.GetArgs{Key: key}
+	reply := &rpc.GetReply{}
+	ck.clnt.Call(ck.server, "KVServer.Get", request, reply)
+	return reply.Value, reply.Version, reply.Err
 }
 
 // Put updates key with value only if the version in the
@@ -49,7 +74,18 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 // The types of args and reply (including whether they are pointers)
 // must match the declared types of the RPC handler function's
 // arguments. Additionally, reply must be passed as a pointer.
-func (ck *Clerk) Put(key, value string, version rpc.Tversion) rpc.Err {
+func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 	// You will have to modify this function.
-	return rpc.ErrNoKey
+	request := &rpc.PutArgs{Key: key, Value: value, Version: version}
+	reply := &rpc.PutReply{}
+	ck.clnt.Call(ck.server, "KVServer.Put", request, reply)
+	switch reply.Err {
+	case rpc.ErrNoKey:
+		return rpc.ErrNoKey
+	case rpc.ErrVersion:
+		return rpc.ErrVersion
+	default:
+		return rpc.OK
+	}
+
 }
