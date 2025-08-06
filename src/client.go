@@ -4,6 +4,7 @@ import (
 	"kvserver/src/kvtest1"
 	"kvserver/src/rpc"
 	"kvserver/src/tester1"
+	"time"
 )
 
 var tries int = 2
@@ -57,6 +58,8 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 		ok := ck.clnt.Call(ck.server, "KVServer.Get", request, reply)
 		if ok {
 			return reply.Value, reply.Version, reply.Err
+		} else {
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 
@@ -101,6 +104,7 @@ func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 			}
 		} else {
 			retriedRequest = true
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 
